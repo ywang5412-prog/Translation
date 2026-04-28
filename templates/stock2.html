@@ -1,0 +1,60 @@
+import requests
+
+def clean_price(value):
+    """把價格字串轉成 float，順便去掉逗號"""
+    value = str(value).replace(",", "").strip()
+    if value in ["--", "---", ""]:
+        return None
+    return float(value)
+
+stock_no = input("請輸入上市股票代號（例如 2330）: ").strip()
+
+查最近 1 個月資料
+日期格式：YYYYMMDD，通常填當月 1 號即可
+date_str = "20250401"
+
+url = f"https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date={date_str}&stockNo={stock_no}"
+
+res = requests.get(url)
+data = res.json()
+
+檢查股票代號是否正確
+if data.get("stat") != "OK" or "data" not in data or len(data["data"]) == 0:
+    print("⚠ 股票代號錯誤，或查無資料（僅支援上市股票）")
+else:
+    rows = data["data"]
+
+    # Basic：最近一筆開盤價與收盤價
+    latest = rows[-1]
+    latest_date = latest[0]
+    latest_open = latest[3]
+    latest_close = latest[6]
+
+    print("\n===== Basic =====")
+    print("日期：", latest_date)
+    print("開盤價：", latest_open)
+    print("收盤價：", latest_close)
+
+    # Medium：最近 1 個月最高價與最低價
+    highs = []
+    lows = []
+
+    for row in rows:
+        high = clean_price(row[4])
+        low = clean_price(row[5])
+
+        if high is not None:
+            highs.append(high)
+        if low is not None:
+            lows.append(low)
+
+    print("\n===== Medium =====")
+    print("最近 1 個月最高價：", max(highs))
+    print("最近 1 個月最低價：", min(lows))
+
+    # Advanced：最近 10 個交易日開盤價與收盤價
+    print("\n===== Advanced =====")
+    last10 = rows[-10:] if len(rows) >= 10 else rows
+
+    for row in last10:
+        print(f"日期：{row[0]}  開盤：{row[3]}  收盤：{row[6]}")
